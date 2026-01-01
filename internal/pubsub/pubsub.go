@@ -103,11 +103,22 @@ func SubscribeJSON[T any](
 	}
 	logger.Info("Queue declared and bound successfully", "queue", queueName)
 
-	delivery_channel, err := channel.Consume(queue.Name, "",false, false , false, false ,nil)
+	deliveries, err := channel.Consume(queue.Name, "",false, false , false, false ,nil)
 	if err != nil {
 		logger.Error("Failed to declare and bind channel", "queue", queueName, "error", err.Error())
 		return err
 	}
-	
 
+	go func ()  {
+		var message T
+		for d := range deliveries {
+			if err := json.Unmarshal(d.Body, &message) ; err != nil {
+				logger.Error("Invalid delivary Body", err)
+			}
+			handler(message)
+			d.Ack(false)
+		}
+	}()
+
+	return nil
 }

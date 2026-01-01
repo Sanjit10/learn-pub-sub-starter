@@ -11,6 +11,13 @@ import (
 	amqp "github.com/rabbitmq/amqp091-go"
 )
 
+func handlerPause(gs *gamelogic.GameState) func(r routing.PlayingState) {
+    return func(r routing.PlayingState) {
+        defer fmt.Print("> ")
+        gs.HandlePause(r)
+	}
+}
+
 func main() {
 	// ------------------------------------------------------------------
 	// Initialize structured logger (writes to stderr by default)
@@ -62,6 +69,15 @@ func main() {
 	// ------------------------------------------------------------------
 	gameState := gamelogic.NewGameState(username)
 	logger.Info("Game state created", "player", username)
+
+		pubsub.SubscribeJSON(
+		amqpConnection,
+		routing.ExchangePerilDirect,
+		queueName,
+		routing.PauseKey,
+		pubsub.QueueTypeTransient,
+		handlerPause(gameState),
+	)
 
 	// ------------------------------------------------------------------
 	// REPL loop
